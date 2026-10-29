@@ -76,6 +76,8 @@ export const projects = [
     video: '/memora-demo.mp4',
     poster: '/memora-poster.jpg',
     tags: ['Python', 'FastAPI', 'EmbeddingGemma 2', 'HTMX'],
+    url: 'https://github.com/Ravikant010/memora',
+    demo: 'https://drive.google.com/file/d/1_0xsjTRdx0fb3K1t4V2As_ESU6H-S3Qy/view?usp=sharing',
   },
   {
     title: 'Ringer',

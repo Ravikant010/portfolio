@@ -1,98 +1,11 @@
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Stars, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { fadeMaterial } from './Platform'
 
-// "Roadster in orbit" backdrop: starfield, a procedural Earth with atmosphere, and a sun.
+// "Roadster in orbit" backdrop: starfield, a sun, and the Roadster.
 const SUN = new THREE.Vector3(1, 0.35, 0.25).normalize()
-
-const NOISE = `
-  float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-  float noise(vec3 p) {
-    vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x), mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-               mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x), mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
-  }
-  float fbm(vec3 p) { float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
-`
-
-const earthMaterial = () =>
-  new THREE.ShaderMaterial({
-    uniforms: { uSun: { value: SUN }, uTime: { value: 0 } },
-    vertexShader: `varying vec3 vObj; varying vec3 vN; varying vec3 vView;
-      void main() {
-        vObj = position;
-        vN = normalize(mat3(modelMatrix) * normal);
-        vec4 w = modelMatrix * vec4(position, 1.0);
-        vView = normalize(cameraPosition - w.xyz);
-        gl_Position = projectionMatrix * viewMatrix * w;
-      }`,
-    fragmentShader: `uniform vec3 uSun; uniform float uTime; varying vec3 vObj; varying vec3 vN; varying vec3 vView;
-      ${NOISE}
-      void main() {
-        vec3 p = normalize(vObj);
-        float land = smoothstep(0.52, 0.56, fbm(p * 2.2));
-        float ice = smoothstep(0.82, 0.9, abs(p.y));
-        vec3 ocean = mix(vec3(0.01, 0.05, 0.16), vec3(0.03, 0.18, 0.38), fbm(p * 6.0));
-        vec3 ground = mix(vec3(0.09, 0.2, 0.06), vec3(0.35, 0.28, 0.16), fbm(p * 9.0));
-        vec3 col = mix(mix(ocean, ground, land), vec3(0.75), ice);
-        float clouds = smoothstep(0.55, 0.75, fbm(p * 4.0 + vec3(uTime * 0.01, 0.0, 0.0)));
-        col = mix(col, vec3(0.85), clouds * 0.6);
-        float day = dot(normalize(vN), uSun);
-        vec3 lit = col * smoothstep(-0.15, 0.6, day) * 0.75;
-        // city lights on the night side
-        lit += vec3(1.0, 0.7, 0.3) * land * (1.0 - clouds) * smoothstep(0.62, 0.7, fbm(p * 30.0)) * smoothstep(0.1, -0.2, day) * 0.6;
-        // ocean glint
-        vec3 h = normalize(uSun + vView);
-        lit += vec3(1.0, 0.9, 0.7) * pow(max(dot(normalize(vN), h), 0.0), 60.0) * (1.0 - land) * (1.0 - clouds) * 0.8;
-        gl_FragColor = vec4(lit, 1.0);
-      }`,
-  })
-
-const atmosphereMaterial = () =>
-  new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.BackSide,
-    uniforms: { uSun: { value: SUN } },
-    vertexShader: `varying vec3 vN; varying vec3 vView;
-      void main() {
-        vN = normalize(mat3(modelMatrix) * normal);
-        vec4 w = modelMatrix * vec4(position, 1.0);
-        vView = normalize(cameraPosition - w.xyz);
-        gl_Position = projectionMatrix * viewMatrix * w;
-      }`,
-    fragmentShader: `uniform vec3 uSun; varying vec3 vN; varying vec3 vView;
-      void main() {
-        float rim = pow(clamp(1.0 + dot(vN, vView), 0.0, 1.0), 3.0);
-        float lit = smoothstep(-0.3, 0.5, dot(vN, uSun));
-        vec3 c = vec3(0.3, 0.6, 1.0) * rim * lit * 1.6;
-        gl_FragColor = vec4(c, rim * lit);
-      }`,
-  })
-
-function Earth() {
-  const earth = useRef()
-  const mat = useMemo(() => earthMaterial(), [])
-  const atmo = useMemo(() => atmosphereMaterial(), [])
-
-  useFrame(({ clock }, dt) => {
-    earth.current.rotation.y += dt * 0.01
-    earth.current.material.uniforms.uTime.value = clock.elapsedTime
-  })
-
-  return (
-    <group position={[-4, -31, -30]} rotation={[1.2, 0, 0.3]}>
-      <mesh ref={earth} material={mat}>
-        <sphereGeometry args={[24, 160, 160]} />
-      </mesh>
-      <mesh material={atmo} scale={1.04}>
-        <sphereGeometry args={[24, 96, 96]} />
-      </mesh>
-    </group>
-  )
-}
 
 // Tesla Roadster 2020 by vecarz (CC BY 4.0), decimated to ~200k tris in Blender.
 const ROADSTER = '/models/roadster.glb'
@@ -107,29 +20,92 @@ const SPOTS = [
 ]
 const { damp } = THREE.MathUtils
 
+// Sci-fi finish: gunmetal body with a lime Fresnel edge and a light band sweeping nose to tail.
+function holoPaint(time) {
+  const m = new THREE.MeshStandardMaterial({ color: '#0b0c10', metalness: 0.9, roughness: 0.25 })
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = time
+    shader.vertexShader = 'varying vec3 vObj;\n' + shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvObj = position;')
+    shader.fragmentShader = 'uniform float uTime; varying vec3 vObj;\n' + shader.fragmentShader.replace(
+      '#include <emissivemap_fragment>',
+      `#include <emissivemap_fragment>
+      float fres = pow(1.0 - abs(dot(normalize(vNormal), normalize(vViewPosition))), 6.0);
+      float band = 1.0 - smoothstep(0.0, 0.03, abs(fract(vObj.z * 0.25 - uTime * 0.35) - 0.5));
+      totalEmissiveRadiance += vec3(0.83, 1.0, 0.23) * (fres * 1.8 + band * 2.0);`,
+    )
+  }
+  return m
+}
+// Lights pushed past 1 so Bloom flares them.
+const LIGHTS = {
+  'headlights main': [6, 6, 6], 'headlights AHO': [8, 8, 8],
+  'Glass rear lights main': [8, 0.1, 0.1], 'Glass rear lights DHO': [8, 0.1, 0.1],
+  calipers: [3, 3.6, 0.8],
+}
+
 // Glides to its section's spot, then drifts and tumbles slowly, like the real one in orbit.
 function Roadster({ section }) {
   const car = useRef()
+  const trail = useRef()
+  const time = useRef({ value: 0 })
   const { scene } = useGLTF(ROADSTER)
+  const glowFloor = useMemo(() => fadeMaterial('radial', 0.7), [])
+  const thrust = useMemo(() => fadeMaterial('height', 0.7), [])
+  // The model's origin is at the front bumper; recentre so it tumbles around its middle.
+  // Measured in the model's own space: after a remount the cached scene is still parented and moved.
+  const centre = useMemo(() => {
+    scene.updateWorldMatrix(true, true)
+    const box = new THREE.Box3().setFromObject(scene).applyMatrix4(scene.matrixWorld.clone().invert())
+    return box.getCenter(new THREE.Vector3()).negate()
+  }, [scene])
+
+  useLayoutEffect(() => {
+    const paint = holoPaint(time.current)
+    scene.traverse((o) => {
+      if (!o.isMesh) return
+      const name = o.material.name
+      if (name === 'car main paint') o.material = paint
+      else if (LIGHTS[name]) {
+        o.material.emissive.setRGB(...LIGHTS[name])
+        o.material.emissiveIntensity = 1
+        o.material.toneMapped = false
+      }
+    })
+  }, [scene])
 
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime
+    time.current.value = t
     const c = car.current
     const [x, y] = SPOTS[section]
     c.position.x = damp(c.position.x, x + Math.sin(t * 0.08) * 0.3, 1.5, dt)
     c.position.y = damp(c.position.y, y + Math.sin(t * 0.13) * 0.2, 1.5, dt)
     c.position.z = -8
     c.rotation.set(0.35 + Math.sin(t * 0.1) * 0.15, t * 0.12, 0.25 + Math.cos(t * 0.09) * 0.1)
+    trail.current.scale.y = 1 + Math.sin(t * 23) * 0.08 + Math.sin(t * 7) * 0.1 // engine flicker
   })
 
-  return <primitive ref={car} object={scene} scale={0.5} position={[SPOTS[0][0], SPOTS[0][1], -8]} />
+  return (
+    <group ref={car} scale={0.5} position={[SPOTS[0][0], SPOTS[0][1], -8]}>
+      <primitive object={scene} position={centre} />
+      {/* lime under-glow */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.55, 0]} scale={[2.6, 5.2, 1]} material={glowFloor}>
+        <planeGeometry />
+      </mesh>
+      {/* thruster trail out of the tail (the tail is -z) */}
+      <group ref={trail} position={[0, 0.1, -2.05]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, 1.6, 0]} material={thrust}>
+          <cylinderGeometry args={[0.08, 0.32, 3.2, 32, 1, true]} />
+        </mesh>
+      </group>
+    </group>
+  )
 }
 
 export default function Space({ section }) {
   return (
     <>
       <Stars radius={90} depth={40} count={5000} factor={4} saturation={0} fade speed={0.4} />
-      <Earth />
       <Suspense fallback={null}>
         <Roadster section={section} />
       </Suspense>

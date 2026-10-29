@@ -4,6 +4,7 @@ import { Environment, Float, Sparkles } from '@react-three/drei'
 import Character from './Character'
 import Platform from './Platform'
 import Space from './Space'
+import Cosmos from './Cosmos'
 import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
@@ -58,6 +59,7 @@ export default function Scene({ section }) {
       <Suspense fallback={null}>
         <Hero section={section} />
       </Suspense>
+      <Cosmos section={section} />
       <Space section={section} />
       <Sparkles count={70} scale={[14, 8, 6]} size={2} speed={0.25} opacity={0.5} color={ACCENT} />
       <Environment preset="city" environmentIntensity={0.6} />

@@ -125,9 +125,9 @@ ol, ul { list-style: none; padding: 0; }
   padding: clamp(28px, 3vw, 44px);
   border: 1px solid var(--faint);
   border-radius: 20px;
-  background: #ecebe608;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: #0a0b0d73; /* dark enough for the text, light enough to keep the scene visible */
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .detail h2 {
   margin: 8px 0 20px;

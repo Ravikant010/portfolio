@@ -8,11 +8,11 @@ const glow = (k) => LIME.clone().multiplyScalar(k)
 const additive = { transparent: true, depthWrite: false, toneMapped: false, blending: THREE.AdditiveBlending }
 
 // Radial fade for the floor disc and the beam (bright centre/bottom, transparent edge/top).
-function fadeMaterial(axis, strength) {
+export function fadeMaterial(axis, strength, color = LIME) {
   return new THREE.ShaderMaterial({
     ...additive,
     side: THREE.DoubleSide,
-    uniforms: { uColor: { value: glow(strength) } },
+    uniforms: { uColor: { value: color.clone().multiplyScalar(strength) } },
     vertexShader: `varying vec2 vUv; varying float vFacing;
       void main() {
         vUv = uv;
