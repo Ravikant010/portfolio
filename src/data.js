@@ -73,11 +73,10 @@ export const projects = [
       ['Tests', 'pytest · fake embedder via Protocol'],
     ],
     run: ['uv sync', 'cp .env.example .env   # set GG_PHOTOS_DIR', 'uv run python -m app.indexer', 'uv run uvicorn app.main:app'],
-    video: '/memora-demo.mp4',
-    poster: '/memora-poster.jpg',
+    video: '/memora-explainer.mp4', // narrated explainer, also on Drive (linked from the repo README)
+    poster: '/memora-explainer-poster.jpg',
     tags: ['Python', 'FastAPI', 'EmbeddingGemma 2', 'HTMX'],
     url: 'https://github.com/Ravikant010/memora',
-    demo: 'https://drive.google.com/file/d/1_0xsjTRdx0fb3K1t4V2As_ESU6H-S3Qy/view?usp=sharing',
   },
   {
     title: 'Ringer',

@@ -77,8 +77,9 @@ function CaseStudy({ p }) {
       </dl>
     )],
     p.run && ['Run it', () => <pre className="run">{run(p.run)}</pre>],
+    // narrated, so no muted autoplay: the viewer presses play with sound on
     p.video && ['Demo', () => (
-      <video className="demo" src={p.video} poster={p.poster} controls autoPlay muted loop playsInline />
+      <video className="demo" src={p.video} poster={p.poster} controls preload="metadata" playsInline />
     )],
   ].filter(Boolean)
   const [tab, setTab] = useState(0)
