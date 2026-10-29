@@ -390,8 +390,6 @@ export default function App() {
         <div className="social">
           <a href={profile.links.github} target="_blank" rel="noreferrer">GitHub</a>
           <a href={profile.links.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>
-          {/* CC BY 4.0 requires the credit */}
-          <a href="https://sketchfab.com/3d-models/tesla-roadster-2020-wwwvecarzcom-fac3d813620f4c4a95da1933c2592069" target="_blank" rel="noreferrer">Roadster model: vecarz, CC BY</a>
         </div>
         <div className="pager">
           <button onClick={() => go(section - 1)} aria-label="Previous section">←</button>
