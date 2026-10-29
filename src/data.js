@@ -41,7 +41,7 @@ export const projects = [
   {
     title: 'Memora',
     kind: 'Private AI photo search',
-    text: 'Search your own photo library in plain language, in any language. Runs fully on your machine with EmbeddingGemma 2.',
+    text: 'Find any photo by describing it, in English, Hindi or any other language. Runs entirely on your machine with EmbeddingGemma 2.',
     pitch:
       'Google-Photos-style search for your own library, without the cloud. Type "dog on a beach at sunset", or the same thing in Hindi, and Memora finds the matching photos without tags or captions, because text and images share one embedding space. Every photo stays on your machine.',
     stats: [
