@@ -272,10 +272,22 @@ function Work() {
   )
 }
 
+// Total time since the earliest start date ("Feb 2022 — ..."), so it stays current without edits.
+function totalExperience() {
+  const start = Math.min(...experience.map((j) => new Date(`1 ${j.period.split(' — ')[0]}`).getTime()))
+  const months = Math.floor((Date.now() - start) / (30.44 * 24 * 3600 * 1000))
+  const y = Math.floor(months / 12)
+  const m = months % 12
+  return `${y} yr${y === 1 ? '' : 's'}${m ? ` ${m} mo${m === 1 ? '' : 's'}` : ''}`
+}
+
 function History() {
   return (
     <section className="list right">
       <motion.p className="label" {...rise(0)}>Experience</motion.p>
+      <motion.p className="total" {...rise(0)}>
+        <strong>{totalExperience()}</strong> building for the web
+      </motion.p>
       <ol>
         {experience.map((job, i) => (
           <motion.li key={job.period} {...rise(i + 1)}>
